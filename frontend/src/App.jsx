@@ -13,7 +13,7 @@ export default function App() {
   // 2. WebSocket Lifecycle Hook
   useEffect(() => {
     // Connect to the FastAPI backend WebSocket endpoint
-    ws.current = new WebSocket('ws://localhost:8000/ws/alerts');
+    ws.current = new WebSocket('ws://127.0.0.1:8000/ws/alerts');
 
     ws.current.onopen = () => {
       setConnectionStatus('Live & Secure');

@@ -7,9 +7,7 @@ from sqlalchemy import Column, String, Float, DateTime, Integer
 
 logger = logging.getLogger("fraud_database_layer")
 
-# ==========================================
 # 1. Async Engine & Session Pool Configuration
-# ==========================================
 # In production, this comes from a secure .env file or AWS Secrets Manager.
 # We use postgresql+asyncpg to ensure non-blocking I/O operations.
 DATABASE_URL = os.getenv(
@@ -37,9 +35,7 @@ AsyncSessionLocal = async_sessionmaker(
 
 Base = declarative_base()
 
-# ==========================================
 # 2. ORM Data Model (PostgreSQL Table Schema)
-# ==========================================
 class TransactionRecord(Base):
     """
     SQLAlchemy ORM Model representing the 'transactions' table in PostgreSQL.
@@ -66,9 +62,7 @@ class TransactionRecord(Base):
         nullable=False
     )
 
-# ==========================================
 # 3. Asynchronous Database Workers
-# ==========================================
 async def init_db():
     """
     Creates tables if they don't exist. 

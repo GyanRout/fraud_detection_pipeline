@@ -4,11 +4,11 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import redis.asyncio as redis
 import uvicorn
-from src.core.database import init_db
-from src.api.websocket import router as websocket_router
 
-# We import the router we built in the previous step
+# Import our modular routers and database initializer
 from src.api.routes import router as api_v1_router
+from src.api.websocket import router as websocket_router
+from src.core.database import init_db
 
 # Configure global application logging
 logging.basicConfig(
@@ -22,33 +22,26 @@ redis_client = None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """
-    Enterprise lifespan manager. 
-    Code before the 'yield' runs exactly once during server boot.
-    Code after the 'yield' runs exactly once during server shutdown.
-    """
     global redis_client
-    await init_db()
     logger.info("Initializing high-performance Fraud Detection Gateway...")
     
+    # 1. Initialize PostgreSQL Database Tables
+    await init_db()
+    
     try:
-        # Initialize Redis connection pool for rate-limiting and fast feature lookups
-        # In a real environment, the URL comes from an environment variable.
+        # 2. Initialize Redis connection pool
         redis_client = redis.from_url(
             "redis://localhost:6379", 
             encoding="utf-8", 
             decode_responses=True,
             max_connections=100
         )
-        # Ping to verify the connection is actually alive before accepting API traffic
         await redis_client.ping()
         logger.info("Redis connection pool established successfully.")
     except Exception as e:
-        logger.warning(f"Could not connect to Redis. Rate limiting will be disabled. Error: {e}")
-        # Note: Depending on strictness, you might raise an exception here to crash the server 
-        # if Redis is deemed absolutely mandatory for business logic.
+        logger.warning(f"Could not connect to Redis. Error: {e}")
 
-    # Yield control back to FastAPI to start accepting HTTP requests
+    # Yield control back to FastAPI to start accepting HTTP/WebSocket requests
     yield 
 
     # --- SHUTDOWN SEQUENCE ---
@@ -60,31 +53,27 @@ async def lifespan(app: FastAPI):
 # Instantiate the main FastAPI application
 app = FastAPI(
     title="Fintech Fraud Detection API",
-    description="High-throughput, low-latency ML inference gateway.",
     version="1.0.0",
     lifespan=lifespan,
-    docs_url="/docs",
-    redoc_url=None # Disable redoc to save static file loading overhead
+    redoc_url=None
 )
 
-# Enforce strict CORS Security
-# If your React frontend is running on localhost:3000, only allow that exact origin.
-ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "http://localhost:5173", # Standard Vite port
-    # "https://admin.yourfintech.com" # Production domain
-]
-
+# BULLETPROOF CORS CONFIGURATION
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
+    allow_origins=[
+        "http://localhost:5173",  # Exact React dev server origin
+        "http://127.0.0.1:5173",  # Loopback variant
+        "http://localhost:3000"   # Standard React port backup
+    ],
     allow_credentials=True,
-    allow_methods=["POST", "OPTIONS"], # Only allow POST for transactions
-    allow_headers=["Authorization", "Content-Type"],
+    allow_methods=["*"],          # Explicitly allow ALL methods
+    allow_headers=["*"],          # Explicitly allow ALL headers
 )
 
-# Mount our modular API router
+# Mount our modular routers
 app.include_router(api_v1_router)
+app.include_router(websocket_router)
 
 @app.get("/health", tags=["System"])
 async def health_check():
@@ -94,5 +83,4 @@ async def health_check():
 # Allow executing the file directly for local development
 if __name__ == "__main__":
     logger.info("Starting Uvicorn ASGI server...")
-    # workers=1 for local dev. In production, workers = number of CPU cores.
     uvicorn.run("src.main:app", host="0.0.0.0", port=8000, reload=True, workers=1)
