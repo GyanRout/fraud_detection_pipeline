@@ -36,7 +36,7 @@ Ensure you have Docker and Node.js installed.
 docker-compose up -d
 ```
 
-**2. Boot the High-Performance API
+**2. Boot the High-Performance API**
 ```bash
 python -m venv .venv
 source .venv/bin/activate  # (or .venv\Scripts\activate on Windows)
@@ -44,14 +44,14 @@ pip install -r requirements.txt
 uvicorn src.main:app --reload
 ```
 
-**3. Launch the React Dashboard
+**3. Launch the React Dashboard**
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
 
-**4. Run the Traffic Simulator In a separate terminal, generate synthetic financial traffic to watch the pipeline in action:
+**4. Run the Traffic Simulator In a separate terminal, generate synthetic financial traffic to watch the pipeline in action:**
 ```bash
 python scripts/simulate_traffic.py
 ```
